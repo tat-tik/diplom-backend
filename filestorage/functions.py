@@ -212,16 +212,25 @@ def create_public_url(file_id):
     """Создание публичной ссылки на файл"""
     try:
         file_object = StorageFiles.objects.get(id=file_id)
+        print(f"🔗 Creating public URL for file {file_id}: {file_object.file_name}")
+
         if file_object.public_url is None:
             token = binascii.hexlify(os.urandom(20)).decode()
             file_object.public_url = token
             file_object.save(update_fields=["public_url"])
-            print(f"Created public URL for file {file_id}: {token}")
+            print(f"✅ Created new token: {token}")
             return token
+
+        print(f"✅ Using existing token: {file_object.public_url}")
         return file_object.public_url
+
     except ObjectDoesNotExist:
-        print(f"File with id {file_id} not found")
+        print(f"❌ File with id {file_id} not found")
         return None
+    except Exception as e:
+        print(f"❌ Error creating public URL: {e}")
+        return None
+
 
 
 def revoke_public_url(file_id):
@@ -240,27 +249,40 @@ def revoke_public_url(file_id):
 def download_file_public(public_url):
     """Скачивание файла по публичной ссылке"""
     try:
+        print(f"🔗 download_file_public: looking for token={public_url}")
+
         file_object = StorageFiles.objects.get(public_url=public_url)
-        path_to_file = os.path.join(storages_dir, str(file_object.storage_id),
-                                    file_object.file_name_storage)  # Исправлено: было file_name.hex
+        print(f"✅ Found file: {file_object.file_name}")
+        print(f"📁 Storage ID: {file_object.storage_id}")
+        print(f"📁 File name storage: {file_object.file_name_storage}")
+
+        # Формируем путь к файлу
+        filename_storage = str(file_object.file_name_storage)
+        path_to_file = os.path.join(storages_dir, str(file_object.storage_id), filename_storage)
+
+        print(f"📁 Path: {path_to_file}")
+        print(f"📁 File exists: {os.path.exists(path_to_file)}")
 
         if not os.path.exists(path_to_file):
-            print(f"File not found on disk: {path_to_file}")
+            print(f"❌ File not found on disk")
             return None
 
-        file = open(path_to_file, 'rb')
-        response = FileResponse(file, as_attachment=True, filename=file_object.file_name)
+        file_handle = open(path_to_file, 'rb')
+        response = FileResponse(
+            file_handle,
+            as_attachment=True,
+            filename=file_object.file_name
+        )
 
         file_object.date_download = datetime.now()
         file_object.save(update_fields=["date_download"])
 
+        print(f"✅ Public download successful")
         return response
+
     except ObjectDoesNotExist:
-        print(f"File with public URL {public_url} not found")
-        return None
-    except FileNotFoundError:
-        print(f"File not found: {path_to_file}")
+        print(f"❌ No file found with token: {public_url}")
         return None
     except Exception as e:
-        print(f"Error downloading public file: {e}")
+        print(f"❌ Error: {e}")
         return None

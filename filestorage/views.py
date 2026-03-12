@@ -138,8 +138,8 @@ def download_file_api(request, file_id):
             status=status.HTTP_404_NOT_FOUND
         )
 
-    # Проверяем на создание публичной ссылки
-    elif len(path_arr) == 4 and path_arr[2] == 'share':
+    # Проверяем на создание публичной ссылки - последний элемент должен быть 'share'
+    elif len(path_arr) == 4 and path_arr[-1] == 'share':  # ИСПРАВЛЕНО
         print(f"🔍 Creating share token for file {file_id}")
         token = create_public_url(file_id)
         if token:
@@ -154,16 +154,25 @@ def download_file_api(request, file_id):
         {"error": "Invalid URL"},
         status=status.HTTP_400_BAD_REQUEST
     )
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def download_public_file_api(request, public_url_token):
-    path_arr = request.path.split('/')[1:-1]
-    if len(path_arr) == 5 and path_arr[3] == 'public':
-        response = download_file_public(path_arr[-1])
+    print(f"🔗 PUBLIC DOWNLOAD: token={public_url_token}")
+
+    # Упростим - просто ищем файл по токену
+    try:
+        file_object = StorageFiles.objects.get(public_url=public_url_token)
+        print(f"✅ Found file: {file_object.file_name}")
+
+        # Здесь должна быть функция скачивания
+        response = download_file_public(public_url_token)
         if response:
             return response
+        else:
+            return Response({"error": "File not found on disk"}, status=404)
 
-    return Response(
-        {"error": "File not found"},
-        status=status.HTTP_404_NOT_FOUND
-    )
+    except StorageFiles.DoesNotExist:
+        print(f"❌ No file found with token: {public_url_token}")
+        return Response({"error": "File not found"}, status=404)
