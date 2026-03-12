@@ -12,7 +12,7 @@ class Storages(models.Model):
 class StorageFiles(models.Model):
     storage = models.ForeignKey(Storages, on_delete=models.CASCADE)
     file_name = models.CharField(max_length=255)
-    file_name_storage = models.UUIDField(editable=False)
+    file_name_storage = models.CharField(max_length=32)
     file_size = models.PositiveBigIntegerField(editable=False)
     comment = models.CharField(max_length=255, null=True, blank=True)
     date_load = models.DateTimeField(editable=False, auto_now_add=True)

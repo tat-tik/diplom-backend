@@ -12,6 +12,7 @@ from filestorage.models import Storages, StorageFiles
 from django.db import transaction
 from rest_framework.response import Response
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils import timezone
 
 
 # Проверяем и создаем media директорию при импорте
@@ -134,7 +135,7 @@ def delete_file(storage_id, file_id):
         storage_dir = os.path.join(storages_dir, str(storage_id))
         fs = FileSystemStorage(storage_dir)
 
-        file_path = file.file_name_storage
+        file_path = str(file.file_name_storage)
 
         # Удаляем физический файл
         if fs.exists(file_path):
@@ -162,29 +163,48 @@ def download_file(file_id):
     """Скачивание файла"""
     try:
         file_object = StorageFiles.objects.get(id=file_id)
-        path_to_file = os.path.join(storages_dir, str(file_object.storage_id), file_object.file_name_storage)
+
+        # ПОЛУЧАЕМ UUID ИЗ БД
+        uuid_value = file_object.file_name_storage
+
+        # ПРЕОБРАЗУЕМ В СТРОКУ БЕЗ ДЕФИСОВ
+        if isinstance(uuid_value, uuid.UUID):
+            # Если это UUID объект
+            filename_storage = uuid_value.hex
+            print(f"📁 UUID object detected, using hex: {filename_storage}")
+        else:
+            # Если это строка - убираем дефисы
+            filename_storage = str(uuid_value).replace('-', '')
+            print(f"📁 String detected, removing hyphens: {filename_storage}")
+
+        # ФОРМИРУЕМ ПУТЬ
+        path_to_file = os.path.join(storages_dir, str(file_object.storage_id), filename_storage)
+
+        print(f"📁 Full path: {path_to_file}")
+        print(f"📁 File exists: {os.path.exists(path_to_file)}")
 
         if not os.path.exists(path_to_file):
-            print(f"File not found on disk: {path_to_file}")
+            print(f"❌ File not found on disk")
             return Response({"error": "File not found on disk"}, status=404)
 
-        file = open(path_to_file, 'rb')
-        response = FileResponse(file, as_attachment=True, filename=file_object.file_name)
-
-        # Обновляем дату последнего скачивания
-        file_object.date_download = datetime.now()
+        file_handle = open(path_to_file, 'rb')
+        response = FileResponse(
+            file_handle,
+            as_attachment=True,
+            filename=file_object.file_name
+        )
+        file_object.date_download = timezone.now()
         file_object.save(update_fields=["date_download"])
-
+        print(f"✅ File downloaded successfully")
         return response
 
     except ObjectDoesNotExist:
-        print(f"File with id {file_id} not found")
+        print(f"❌ File with id {file_id} not found in database")
         return Response({"error": "File not found"}, status=404)
-    except FileNotFoundError:
-        print(f"File not found: {path_to_file}")
-        return Response({"error": "File not found on disk"}, status=404)
     except Exception as e:
-        print(f"Error downloading file: {e}")
+        print(f"❌ Error in download_file: {e}")
+        import traceback
+        traceback.print_exc()
         return Response({"error": str(e)}, status=500)
 
 

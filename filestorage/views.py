@@ -10,6 +10,7 @@ from filestorage.serializers import StoragesGetSerializer, FileGetSerializer, Fi
 from filestorage.models import Storages, StorageFiles
 from filestorage.functions import save_files, delete_file, download_file, create_public_url, download_file_public
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsAdmin])
 def storages_get(request):
@@ -105,7 +106,6 @@ def storage_file_update(request, storage_id, file_id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated, IsOwnerOrAdmin])
 def storage_file_delete(request, storage_id, file_id):
-
     if delete_file(storage_id, file_id):
         return Response({'status': True}, status=status.HTTP_200_OK)
 
@@ -118,20 +118,29 @@ def storage_file_delete(request, storage_id, file_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsOwnerDownloadOrAdmin])
 def download_file_api(request, file_id):
+    print(f"🔍 DOWNLOAD API CALLED: file_id={file_id}")
+    print(f"🔍 User: {request.user.id}, Authenticated: {request.user.is_authenticated}")
+    print(f"🔍 Path: {request.path}")
 
     path_arr = request.path.split('/')[1:-1]
+    print(f"🔍 Path array: {path_arr}")
+    print(f"🔍 Path array length: {len(path_arr)}")
 
-
-    if len(path_arr) == 3:
+    # Проверяем на скачивание - последний элемент должен быть 'download'
+    if len(path_arr) == 4 and path_arr[-1] == 'download':
+        print(f"🔍 Downloading file {file_id}")
         response = download_file(file_id)
         if response:
+            print(f"✅ Download successful")
             return response
         return Response(
             {"error": "File not found"},
             status=status.HTTP_404_NOT_FOUND
         )
 
+    # Проверяем на создание публичной ссылки
     elif len(path_arr) == 4 and path_arr[2] == 'share':
+        print(f"🔍 Creating share token for file {file_id}")
         token = create_public_url(file_id)
         if token:
             return Response({'status': True, 'token': token}, status=status.HTTP_200_OK)
@@ -140,12 +149,11 @@ def download_file_api(request, file_id):
             status=status.HTTP_404_NOT_FOUND
         )
 
+    print(f"❌ Invalid URL path: {path_arr}")
     return Response(
         {"error": "Invalid URL"},
         status=status.HTTP_400_BAD_REQUEST
     )
-
-
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def download_public_file_api(request, public_url_token):
