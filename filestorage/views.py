@@ -118,29 +118,18 @@ def storage_file_delete(request, storage_id, file_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsOwnerDownloadOrAdmin])
 def download_file_api(request, file_id):
-    print(f"🔍 DOWNLOAD API CALLED: file_id={file_id}")
-    print(f"🔍 User: {request.user.id}, Authenticated: {request.user.is_authenticated}")
-    print(f"🔍 Path: {request.path}")
-
     path_arr = request.path.split('/')[1:-1]
-    print(f"🔍 Path array: {path_arr}")
-    print(f"🔍 Path array length: {len(path_arr)}")
 
-    # Проверяем на скачивание - последний элемент должен быть 'download'
     if len(path_arr) == 4 and path_arr[-1] == 'download':
-        print(f"🔍 Downloading file {file_id}")
         response = download_file(file_id)
         if response:
-            print(f"✅ Download successful")
             return response
         return Response(
             {"error": "File not found"},
             status=status.HTTP_404_NOT_FOUND
         )
 
-    # Проверяем на создание публичной ссылки - последний элемент должен быть 'share'
-    elif len(path_arr) == 4 and path_arr[-1] == 'share':  # ИСПРАВЛЕНО
-        print(f"🔍 Creating share token for file {file_id}")
+    elif len(path_arr) == 4 and path_arr[-1] == 'share':
         token = create_public_url(file_id)
         if token:
             return Response({'status': True, 'token': token}, status=status.HTTP_200_OK)
@@ -148,8 +137,6 @@ def download_file_api(request, file_id):
             {"error": "File not found"},
             status=status.HTTP_404_NOT_FOUND
         )
-
-    print(f"❌ Invalid URL path: {path_arr}")
     return Response(
         {"error": "Invalid URL"},
         status=status.HTTP_400_BAD_REQUEST
@@ -159,14 +146,9 @@ def download_file_api(request, file_id):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def download_public_file_api(request, public_url_token):
-    print(f"🔗 PUBLIC DOWNLOAD: token={public_url_token}")
 
-    # Упростим - просто ищем файл по токену
     try:
         file_object = StorageFiles.objects.get(public_url=public_url_token)
-        print(f"✅ Found file: {file_object.file_name}")
-
-        # Здесь должна быть функция скачивания
         response = download_file_public(public_url_token)
         if response:
             return response
@@ -174,5 +156,4 @@ def download_public_file_api(request, public_url_token):
             return Response({"error": "File not found on disk"}, status=404)
 
     except StorageFiles.DoesNotExist:
-        print(f"❌ No file found with token: {public_url_token}")
         return Response({"error": "File not found"}, status=404)

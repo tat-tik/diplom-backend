@@ -9,7 +9,7 @@ class IsOwnerOrAdmin(BasePermission):
             return False
         if request.user.is_superuser:
             return True
-        if request.method not in SAFE_METHODS:  # SAFE_METHODS = ('GET', 'HEAD', 'OPTIONS')
+        if request.method not in SAFE_METHODS:
             storage_id = view.kwargs.get('storage_id')
             if not storage_id:
                 return False

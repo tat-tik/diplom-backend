@@ -69,7 +69,17 @@ class UsersGetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'is_superuser', 'is_staff', 'is_active', 'storage']
+        fields = [
+            'id',
+            'username',
+            'email',
+            'first_name',
+            'date_joined',
+            'is_superuser',
+            'is_staff',
+            'is_active',
+            'storage'
+        ]
 
 
 class UserUpdateByAdminSerializer(serializers.ModelSerializer):

@@ -110,7 +110,7 @@ class UsersLogin(APIView):
                     {
                         'status login': True,
                         'user': authenticated_user.id,
-                        'storage': authenticated_user.storage.id,
+                        'storage': authenticated_user.storage.id if hasattr(authenticated_user, 'storage') else None,
                         'admin': authenticated_user.is_superuser
                     },
                     status=201
